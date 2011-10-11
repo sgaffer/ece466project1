@@ -1,16 +1,38 @@
 int x, y, z;
 
-int foo1() {
-  return 5;
-}
+int j = 5;
 
-int j = 9;
 
-int foo2(int g, int h, int k) {
-  int i;
-  return 5;
-}
 
-int main(void) {
+int main() 
+{
+  int a = 2;
+  int b = 3;
+  while(x <= 5)
+  {
+    a = 1 + 2;
+    b = 5;
+  }
+  
+
   return 0;
+
+}
+
+void ifTest(int a)
+{
+    if(a/2 + y < z)
+        z = 4/y + 2*x;
+}
+
+int ifElseTest()
+{
+    if(x == 5)
+        x = 2 + x;
+    else
+        x = y;
+
+    z = 2*x + 7;
+
+    return 3;
 }
