@@ -401,10 +401,14 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 
 	private void genCode(Object o){
 		//debug.println("\n___________Object"+o.getClass());
-		if(o instanceof VariableDeclaration)    //global variable declarations
+		if(o instanceof DeclarationStatement)
 		{
-			dump.println("Var Dec found");
-			declareVariable((VariableDeclaration) o);
+			DeclarationStatement decStmt = (DeclarationStatement) o;
+			if(decStmt.getDeclaration() instanceof VariableDeclaration)    //local variable declarations
+			{
+				dump.println("Local Var Dec found");
+				declareVariable((VariableDeclaration) decStmt.getDeclaration());
+			}
 		}
 		else if(o instanceof Procedure){
 			procedure((Procedure) o);
