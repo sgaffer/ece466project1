@@ -1328,13 +1328,33 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 
 		//decide on function to be used
 		if(exp.getOperator().toString().trim().equals("+")) 
-			instrBuff = instrBuff.append("add i32 ");
+		{
+			if (ListOfPointers.containsKey(LHS.toString()))
+				instrBuff = instrBuff.append("add i32* ");
+			else
+				instrBuff = instrBuff.append("add i32 ");
+		}
 		else if(exp.getOperator().toString().trim().equals("-"))
-			instrBuff = instrBuff.append("sub i32 ");
+		{
+			if (ListOfPointers.containsKey(LHS.toString()))
+				instrBuff = instrBuff.append("sub i32* ");
+			else
+				instrBuff = instrBuff.append("sub i32 ");
+		}
 		else if(exp.getOperator().toString().trim().equals("*"))
-			instrBuff = instrBuff.append("mul i32 ");
+		{
+			if (ListOfPointers.containsKey(LHS.toString()))
+				instrBuff = instrBuff.append("mul i32* ");
+			else
+				instrBuff = instrBuff.append("mul i32 ");
+		}
 		else if(exp.getOperator().toString().trim().equals("/"))
-			instrBuff = instrBuff.append("sdiv i32 ");
+		{
+			if (ListOfPointers.containsKey(LHS.toString()))
+				instrBuff = instrBuff.append("sdiv i32* ");
+			else
+				instrBuff = instrBuff.append("sdiv i32 ");
+		}
 
 		//generate code and result registers for left hand size
 		if(LHS instanceof IntegerLiteral)
@@ -1348,12 +1368,12 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 			
 			if (ListOfPointers.containsKey(LHS.toString()))
 			{
-				for (int i = 0; i < Integer.parseInt(ListOfPointers.get(LHS.toString()).toString()); i++) { 	// count number of references
+				for (int i = 1; i < Integer.parseInt(ListOfPointers.get(LHS.toString()).toString()); i++) { 	// count number of references
 					setupInstr.append("*");
 				}	
 			}
 			
-			setupInstr = setupInstr.append(" %" +
+			setupInstr = setupInstr.append("* %" +
 					((Identifier)LHS).getName() + "\n");
 			instrBuff = instrBuff.append("%r" + (ssaReg-1));
 		}
