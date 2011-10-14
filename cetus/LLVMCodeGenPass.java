@@ -1051,7 +1051,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 			}
 			returnReg = ssaReg++;
 			code.println("%" + returnReg + " = add i32 0, " + ((IntegerLiteral)RHS).getValue());
-			code.println("store i32 "+ ((IntegerLiteral)RHS).getValue() + ", i32* %"+nameLHS);
+			//code.println("store i32 "+ ((IntegerLiteral)RHS).getValue() + ", i32* %"+nameLHS);
 		}
 		else if(RHS instanceof CommaExpression){
 			String returnString = commaExpression((CommaExpression)RHS);
