@@ -1324,38 +1324,25 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 
 		StringBuffer instrBuff = new StringBuffer("");	//buffer for output to be written upon completion
 		StringBuffer setupInstr = new StringBuffer(""); //buffer for extra load instructions
-		instrBuff = instrBuff.append("%r" + resultReg + " = ");	//print start of instruction
-
-		//decide on function to be used
-		if(exp.getOperator().toString().trim().equals("+")) 
+		
+		if (! (ListOfPointers.containsKey(LHS.toString())))
 		{
-			if (ListOfPointers.containsKey(LHS.toString()))
-				instrBuff = instrBuff.append("add i32* ");
-			else
+			instrBuff = instrBuff.append("%r" + resultReg + " = ");	//print start of instruction
+			//decide on function to be used
+			if(exp.getOperator().toString().trim().equals("+")) 
 				instrBuff = instrBuff.append("add i32 ");
-		}
-		else if(exp.getOperator().toString().trim().equals("-"))
-		{
-			if (ListOfPointers.containsKey(LHS.toString()))
-				instrBuff = instrBuff.append("sub i32* ");
-			else
+			else if(exp.getOperator().toString().trim().equals("-"))
 				instrBuff = instrBuff.append("sub i32 ");
-		}
-		else if(exp.getOperator().toString().trim().equals("*"))
-		{
-			if (ListOfPointers.containsKey(LHS.toString()))
-				instrBuff = instrBuff.append("mul i32* ");
-			else
+			else if(exp.getOperator().toString().trim().equals("*"))
 				instrBuff = instrBuff.append("mul i32 ");
-		}
-		else if(exp.getOperator().toString().trim().equals("/"))
-		{
-			if (ListOfPointers.containsKey(LHS.toString()))
-				instrBuff = instrBuff.append("sdiv i32* ");
-			else
+			else if(exp.getOperator().toString().trim().equals("/"))
 				instrBuff = instrBuff.append("sdiv i32 ");
 		}
-
+		else
+		{
+			instrBuff = instrBuff.append("%r" + resultReg + " = getelementptr inbounds i32* ");
+		}
+			
 		//generate code and result registers for left hand size
 		if(LHS instanceof IntegerLiteral)
 			instrBuff = instrBuff.append(((IntegerLiteral)LHS).getValue());
@@ -1380,7 +1367,12 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 
 		//generate code and result registers for right hand size
 		if(RHS instanceof IntegerLiteral)
-			instrBuff = instrBuff.append(", " + ((IntegerLiteral)RHS).getValue());
+		{
+			if (! (ListOfPointers.containsKey(LHS.toString())))
+				instrBuff = instrBuff.append(", " + ((IntegerLiteral)RHS).getValue());
+			else
+				instrBuff = instrBuff.append(", i32 " + ((IntegerLiteral)RHS).getValue());
+		}
 		else if(RHS instanceof BinaryExpression)
 			instrBuff = instrBuff.append(", %" + genExpressionCode((BinaryExpression)RHS));
 		else if(RHS instanceof Identifier)
