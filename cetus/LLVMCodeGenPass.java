@@ -14,6 +14,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 	int ifLabel = 0;
 	int loopLabel = 0;
 	HashMap ListOfArrays=new HashMap();
+	HashMap ListOfPointers = new HashMap();
 	PrintWriter dump = new PrintWriter(System.out);     //debug dump output
 	PrintWriter code = new PrintWriter(System.out);     //code output
 	PrintWriter debug = new PrintWriter(System.out);
@@ -186,6 +187,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 				}
 				else // pointers
 				{
+					ListOfPointers.put(id.getName(), dec.getTypeSpecifiers().size());
 					if (init != null)
 					{
 						code.print("store i32");
@@ -957,7 +959,23 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 		{
 			if(ListOfArrays.containsKey(nameRHS)){
 				dump.println("name:"+nameRHS+"key dump: "+ListOfArrays.get(nameRHS));
-				code.println("%" + ssaReg++ + " = getelementptr inbounds"+ListOfArrays.get(nameRHS)+"* %"+nameRHS+", i32 0, i32 0");
+				code.println("%" + ssaReg++ + " = getelementptr inbounds "+ListOfArrays.get(nameRHS)+"* %"+nameRHS+", i32 0, i32 0");
+				if (ListOfPointers.containsKey(nameLHS))
+				{
+					code.print("store i32");
+
+					for (int i = 1; i < Integer.parseInt(ListOfPointers.get(nameLHS).toString()); i++) {
+						code.print("*");
+					}
+
+					code.print(" %" + (ssaReg - 1) + ", i32");
+					
+					for (int i = 0; i < Integer.parseInt(ListOfPointers.get(nameLHS).toString()); i++) {
+						code.print("*");
+					}
+					
+					code.println(" %" + nameRHS);
+				}
 			} 
 			else {
 				code.println("%" + ssaReg++ + " = load i32* %"+((Identifier)RHS).getName());
