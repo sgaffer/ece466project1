@@ -1057,10 +1057,10 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 					}	
 				code.print(" %r" + returnReg + ", i32*");
 				if (ListOfPointers.containsKey(nameLHS.toString()))
-					for (int i = 1; i < Integer.parseInt(ListOfPointers.get(nameLHS).toString()); i++) { 	// count number of references
+					for (int i = 2; i < Integer.parseInt(ListOfPointers.get(nameLHS).toString()); i++) { 	// count number of references
 						code.print("*");
 					}
-				code.println(" %" + nameLHS);
+				code.println("* %" + nameLHS);
 			}			
 		}
 		else if(RHS instanceof Identifier)
