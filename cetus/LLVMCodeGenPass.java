@@ -2,6 +2,8 @@ import java.io.*;
 import java.lang.reflect.Method;
 import java.util.*;
 
+import com.apple.crypto.provider.Debug;
+
 import cetus.hir.*;
 import cetus.exec.*;
 import cetus.analysis.*;
@@ -19,9 +21,17 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 
 	protected static final int verbosity = PrintTools.getVerbosity();
 
-	protected LLVMCodeGenPass(Program program)
+	protected LLVMCodeGenPass(Program program, String outputFilename)
 	{
 		super(program);
+		
+		/*try{
+			code = new PrintWriter(new FileWriter(outputFilename));
+		}
+		catch(Exception e)
+		{
+			System.out.println("\n\nERROR:  unable to create output file\n");
+		}*/
 	}
 
 	public String getPassName() { return new String("[LLVMCodeGenPass]"); }
@@ -154,21 +164,20 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 					else 
 					{
 						for (int j = 1; j < dec.getTypeSpecifiers().size(); j++)
-							code.println(dec.getTypeSpecifiers().get(j).toString().trim());
+							code.print(dec.getTypeSpecifiers().get(j).toString().trim());
+						code.println("");
 					}
 				}
 				if (dec.getTypeSpecifiers().size() == 1)
 				{
-					if(init == null)
-						initVal = "0";
-					else
+					if(init != null)
 					{
 						initVal = init.toString();
 						initVal = initVal.substring(initVal.indexOf("=")+2,initVal.length());
-					} 
-					code.println("store i32 " + initVal + ", i32* %" + id.getName());
+						code.println("store i32 " + initVal + ", i32* %" + id.getName());
+					}
 				}
-				else 
+				else // pointers
 				{
 					if (init != null)
 					{
@@ -195,7 +204,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 			}        
 
 		}
-		code.println();
+		//code.println();
 	}  
 
 	private void globalVariable(VariableDeclaration varDec)
@@ -435,13 +444,102 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 	}
 	private void forLoop(ForLoop fl){
 		dump.println("For loop found");  
-		Expression 	condi = fl.getCondition();
+		Expression 	lc = fl.getCondition();
 		Statement iStmnt = fl.getInitialStatement();
 		Expression step = fl.getStep();
-		dump.println("For loop conditions: "+condi+"\n");
+		dump.println("For loop conditions: "+lc+"\n");
 		dump.println("For loop initial statement: "+iStmnt.toString());
 		dump.println("For loop step: "+step+"\n");
 
+		Expression init;
+
+		//generate initial statement to setup loop
+		if(iStmnt instanceof ExpressionStatement)
+		{
+			init = ((ExpressionStatement)iStmnt).getExpression();
+
+			AssignmentExpression assn;
+			if(init instanceof AssignmentExpression)
+				assignmentExpression((AssignmentExpression)init);
+		}
+		else System.out.println("ERROR: no expression statement in for loop");
+
+		if(lc instanceof BinaryExpression)
+		{
+			BinaryExpression exp = (BinaryExpression) lc;
+
+			//generate top of loop label
+			code.println("loop"+loopLabel++ +":");
+
+			int LHSreg = 0;
+			int RHSreg = 0;
+
+			//generate proper registers of values to compare
+			Expression LHS = exp.getLHS();
+			Expression RHS = exp.getRHS();
+			//gen LHS register if needed
+			if(LHS instanceof BinaryExpression)
+				LHSreg = genExpressionCode((BinaryExpression) LHS);
+			else if(LHS instanceof Identifier)
+			{
+				code.println("%" + ssaReg++ + " = load i32* %"+((Identifier)LHS).getName());
+				LHSreg = ssaReg-1;
+			}
+			//gen RHS register if needed
+			if(RHS instanceof BinaryExpression)
+				RHSreg = genExpressionCode((BinaryExpression) RHS);
+			else if(RHS instanceof Identifier)
+			{
+				code.println("%" + ssaReg++ + " = load i32* %"+((Identifier)RHS).getName());
+				RHSreg = ssaReg-1;
+			}
+
+			//generate comparison statement
+			code.print("%"+ ssaReg++ + " = icmp ");		//first part of compare expression
+			//generate type of comparison
+			if(exp.getOperator().toString().trim().equals("<")) code.print("slt ");
+			else if(exp.getOperator().toString().trim().equals(">")) code.print("sgt ");
+			else if(exp.getOperator().toString().trim().equals(">=")) code.print("sge ");
+			else if(exp.getOperator().toString().trim().equals("<=")) code.print("sle ");
+			else if(exp.getOperator().toString().trim().equals("==")) code.print("eq ");
+			else if(exp.getOperator().toString().trim().equals("!=")) code.print("ne ");
+
+			//generate comparison instruction
+			code.print("i32 ");      //+exp.getLHS()+", "+exp.getRHS());
+
+			if(LHS instanceof IntegerLiteral)
+				code.print(((IntegerLiteral) LHS).getValue() + ", ");
+			else
+				code.print("%" + LHSreg + ", ");
+
+			if(RHS instanceof IntegerLiteral)
+				code.println(((IntegerLiteral) RHS).getValue());
+			else
+				code.println("%" + RHSreg);
+
+			//generate branch statement
+			code.println("br i1 %"+(ssaReg-1)+", label %loop"+ loopLabel++ +", label %loop"+ loopLabel++);
+			//generate true label
+			code.println("loop"+(loopLabel-2)+":");
+			//generate loop body
+			FlatIterator forIter = new FlatIterator(fl.getBody());
+			while(forIter.hasNext())
+				genCode(forIter.next());
+
+			//generate code to update loop variable
+			if(step instanceof CommaExpression)
+				commaExpression((CommaExpression)step);
+			else if(step instanceof AssignmentExpression)
+				assignmentExpression((AssignmentExpression)step);
+			else System.out.println("\n\nERROR in step of for loop\n\n");
+
+			//generate unconditional branch to start of loop and comparison
+			code.println("br label %loop"+ (loopLabel-3));
+
+			//generate end label
+			code.println("loop"+(loopLabel-1) +":");
+		} 
+		else{code.println("_________ERROR: binray expressions only handled for while loop");}
 	}
 	private void whileLoop(WhileLoop wl){
 		dump.println("While loop found");
@@ -523,10 +621,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 		Expression lc = dl.getCondition();
 		dump.println("Do loop conditions:"+lc);
 	}
-	private void assignment(AssignmentExpression ex){
-		AssignmentOperator op = ex.getOperator();
-		dump.println("Assignment op: "+op.toString());
-	}
+	
 	private boolean procedure(Procedure proc)
 	{
 		StringBuffer argBuff = new StringBuffer("");
@@ -543,14 +638,15 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 		//create code
 		if (!(proc.getParameters().isEmpty() || proc.getParameter(0).toString().equals("void ")))
 		{
-			if (proc.getParameter(0).toString().startsWith("int"))
-				argBuff.append("i32");
+			String parameter = proc.getParameter(0).toString();
+			if (parameter.startsWith("int"))
+				argBuff.append("i32 %" + parameter.substring(parameter.indexOf("t") +2));
+			
 			for (int i = 1; i < proc.getParameters().size(); i++ ) {
 				argBuff.append(", ");
-				if (proc.getParameter(i).toString().startsWith("int"))
-					argBuff.append("i32");
-				argBuff.append("i32");
-				//{arguments, ", ", proc.getParameter(i).toString()};
+				parameter = proc.getParameter(i).toString();
+				if (parameter.startsWith("int"))
+					argBuff.append("i32 %" + parameter.substring(parameter.indexOf("t") +2));
 			}
 			//System.out.println("Arguments: " + argBuff);
 		}
@@ -677,6 +773,8 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 		String nameLHS = null;
 		String nameRHS = null;
 
+		//debug.println(RHS.getClass());
+		
 		if(LHS instanceof ArrayAccess){
 			String name=null;
 			LHSIsArray = true;
@@ -746,10 +844,95 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 			returnReg = commaExpression((CommaExpression)RHS);
 			code.println("store i32 %"+ returnReg +", i32* %"+nameLHS);
 		}
+		else if(RHS instanceof UnaryExpression){
+			boolean global = true;
+			code.print("store i32");
 
+			//debug.println("LHS = " + LHS);
+			//debug.println("RHS = " + RHS);
+			
+			//debug.println(assn.getParent().getParent().getChildren());
+
+			DepthFirstIterator children = new DepthFirstIterator(assn.getParent().getParent());
+			children = new DepthFirstIterator(children.next());	
+			
+			String assigned = RHS.toString().substring(RHS.toString().indexOf("&")+2,RHS.toString().length() - 1);
+			//debug.println(assigned);
+			
+			while (children.hasNext())
+			{
+				Object child = children.next();
+
+				if(child instanceof VariableDeclaration)    //global variable declarations
+				{
+					for(int k = 0; k < ((VariableDeclaration) child).getNumDeclarators(); k++)
+					{
+						VariableDeclarator referencedDec = (VariableDeclarator) ((VariableDeclaration) child).getDeclarator(k);
+
+						if (referencedDec.getID().toString().equals(assigned))
+						{
+							global = false;
+							
+							int derefCount = referencedDec.getTypeSpecifiers().size();
+							
+							for (int j = 0; j < derefCount; j++) {
+								code.print("*");
+							}
+							
+							code.print(" %"+ referencedDec.getID() + ", i32");
+							
+							for (int j = 0; j <= derefCount; j++) {
+								code.print("*");
+							}
+							
+							code.println(" %"+ LHS);
+						}
+					}
+				}
+			}
+			if (global == true)
+			{
+				FlatIterator globalChildren = new FlatIterator(program);
+				globalChildren = new FlatIterator(globalChildren.next());	
+				
+				assigned = RHS.toString().substring(RHS.toString().indexOf("&")+2,RHS.toString().length() - 1);
+								
+				while (globalChildren.hasNext())
+				{
+					Object child = globalChildren.next();
+
+					if(child instanceof VariableDeclaration)    //global variable declarations
+					{						
+						for(int k = 0; k < ((VariableDeclaration) child).getNumDeclarators(); k++)
+						{
+							VariableDeclarator referencedDec = (VariableDeclarator) ((VariableDeclaration) child).getDeclarator(k);
+
+							if (referencedDec.getID().toString().equals(assigned))
+							{								
+								int derefCount = referencedDec.getTypeSpecifiers().size();
+								
+								for (int j = 0; j < derefCount; j++) {
+									code.print("*");
+								}
+								
+								code.print(" %"+ referencedDec.getID() + ", i32");
+								
+								for (int j = 0; j <= derefCount; j++) {
+									code.print("*");
+								}
+								
+								code.println(" %"+ LHS);
+							}
+						}
+					}
+				}
+			}
+		}
+			
+		code.println("");
 		return returnReg;
 	}
-
+	
 	private int genExpressionCode(BinaryExpression exp)
 	{
 		BinaryOperator operator = exp.getOperator();	//get operator
