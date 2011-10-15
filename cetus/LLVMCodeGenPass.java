@@ -1133,7 +1133,14 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 						code.print("*");
 					}
 				
-					code.println(" %" + nameLHS.toString());
+					try{
+						Integer.parseInt(nameLHS);
+						code.println(" %r" + nameLHS);
+					}
+					catch (Exception e)
+					{
+						code.println(" %" + nameLHS);
+					}
 			}			
 		}
 		else if(RHS instanceof Identifier)
