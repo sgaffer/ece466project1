@@ -11,11 +11,13 @@ import cetus.analysis.*;
 public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 {
 	int errors;
+	int retLabel=0;
 	int currentRetVal = 0;
 	int ssaReg = 1;
 	int ifLabel = 0;
 	int loopLabel = 0;
 	int strConst = 0;
+	int returnCount = 0;
 	HashMap ListOfArrays=new HashMap();					// list of arrays
 	HashMap ListOfPointers = new HashMap();				// list of pointers
 	HashMap ListOfStrings = new HashMap();				// list of string literals 
@@ -575,7 +577,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 				code.println("br i1 %r"+(ssaReg-1)+", label %ifLabel"+ trueLabel +", label %ifLabel"+exitLabel);
 			else
 				code.println("br i1 %r"+(ssaReg-1)+", label %ifLabel"+ trueLabel +", label %ifLabel"+elseLabel);
-			code.println("ifLabel"+trueLabel+":");		//label for true condition
+			code.println("\nifLabel"+trueLabel+":");		//label for true condition
 
 			//gen code for true condition
 			FlatIterator ifIter = new FlatIterator(myIf.getThenStatement());
@@ -590,14 +592,14 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 			{
 				code.println("br label %ifLabel"+ exitLabel);	// branch to outside of whole statement
 
-				code.println("ifLabel"+elseLabel+":");		//false label condiditon
+				code.println("\nifLabel"+elseLabel+":");		//false label condiditon
 				ifIter = new FlatIterator(myIf.getElseStatement());
 				while(ifIter.hasNext())
 					genCode(ifIter.next());
 				
 				code.println("br label %ifLabel"+ exitLabel);	//branch out of if statement
 			}
-			code.println("ifLabel"+exitLabel+":");		//label for rest of code
+			code.println("\nifLabel"+exitLabel+":");		//label for rest of code
 
 		} else {code.println("ERROR: Unhandeled if statement condition not binary expression");}
 	}
@@ -629,7 +631,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 
 			//generate top of loop label
 			code.println("br label %loop" + loopLabel);
-			code.println("loop"+loopLabel++ +":");
+			code.println("\nloop"+loopLabel++ +":");
 
 			int LHSreg = 0;
 			int RHSreg = 0;
@@ -680,7 +682,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 			//generate branch statement
 			code.println("br i1 %r"+(ssaReg-1)+", label %loop"+ loopLabel++ +", label %loop"+ loopLabel++);
 			//generate true label
-			code.println("loop"+(loopLabel-2)+":");
+			code.println("\nloop"+(loopLabel-2)+":");
 			//generate loop body
 			FlatIterator forIter = new FlatIterator(fl.getBody());
 			while(forIter.hasNext())
@@ -697,7 +699,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 			code.println("br label %loop"+ (loopLabel-3));
 
 			//generate end label
-			code.println("loop"+(loopLabel-1) +":");
+			code.println("\nloop"+(loopLabel-1) +":");
 		} 
 		else{code.println("_________ERROR: binray expressions only handled for while loop");}
 	}
@@ -722,7 +724,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 
 			//generate top of loop label
 			code.println("br label %loop" + loopLabel);
-			code.println("loop"+loopLabel++ +":");
+			code.println("\nloop"+loopLabel++ +":");
 
 			int LHSreg = 0;
 			int RHSreg = 0;
@@ -794,7 +796,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 			}
 
 			//generate comparison statement
-			setupInstr.append("%r" + ssaReg++ + " = icmp ");		//first part of compare expression
+			code.print("%r" + ssaReg++ + " = icmp ");		//first part of compare expression
 			//generate type of comparison
 			if(exp.getOperator().toString().trim().equals("<")) code.print("slt ");
 			else if(exp.getOperator().toString().trim().equals(">")) code.print("sgt ");
@@ -823,7 +825,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 			//generate branch statement
 			code.println("br i1 %r"+(ssaReg-1)+", label %loop"+ loopLabel++ +", label %loop"+ loopLabel++);
 			//generate true label
-			code.println("loop"+(loopLabel-2)+":");
+			code.println("\nloop"+(loopLabel-2)+":");
 			//generate loop body
 			FlatIterator whileIter = new FlatIterator(wl.getBody());
 			while(whileIter.hasNext())
@@ -833,7 +835,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 			code.println("br label %loop"+ (loopLabel-3));
 
 			//generate end label
-			code.println("loop"+(loopLabel-1) +":");
+			code.println("\nloop"+(loopLabel-1) +":");
 		} 
 		else{code.println("_________ERROR: binray expressions only handled for while loop");}
 	}
@@ -857,6 +859,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 		CompoundStatement cs = proc.getBody();
 		//dump.println("There are "+cs.countStatements()+" statements in this function.");
 		parameters.clear();				//clear parameters for new function
+		returnCount=0;
 
 		//create code
 		if (!(proc.getParameters().isEmpty() || proc.getParameter(0).toString().equals("void ")))
@@ -913,6 +916,17 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 		{
 			genCode(procIter.next());	//get statements and generate code   
 		}
+		
+		code.println("%r"+ ssaReg++ + " = add i32 0, 0");	//print no-op
+		
+		//generate return code
+		if(retType.equals("int"))
+		{
+			code.println("br label %return_"+retLabel);
+			code.println("return_"+ retLabel++ +":");
+			code.println("%retval"+ currentRetVal++ +" = load i32* %retval"+(currentRetVal-2-returnCount));
+			code.println("ret i32 %retval"+(currentRetVal-1));		//print return code
+		}
 
 		code.println("}\n");
 		
@@ -925,52 +939,44 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 	private boolean foundReturn(ReturnStatement rs){
 		Expression ex = rs.getExpression();
 		dump.println("Return value: "+ex);
+		returnCount++;
 
 		//print code
 		if(ex instanceof BinaryExpression)
 		{
 			int resultReg = genExpressionCode((BinaryExpression)ex);	
-			code.println("store i32 %r"+resultReg+", i32* %retval"+(currentRetVal-1));
-			//code.println("return_"+currentRetVal+":");
-			code.println("%retval"+ currentRetVal++ +" = load i32* %retval"+(currentRetVal-2));
-			code.println("ret i32 %retval"+(currentRetVal-1));
+			code.println("store i32 %r"+resultReg+", i32* %retval"+(currentRetVal++ - returnCount));
+			code.println("br label %return_"+retLabel);
+			//code.println("%retval"+ currentRetVal++ +" = load i32* %retval"+(currentRetVal-1-returnCount));
+			//code.println("ret i32 %retval"+(currentRetVal-1));
 		}
 		else if(ex instanceof Identifier)
 		{
 			code.println("%r" + ssaReg++ + " = load i32* %"+((Identifier)ex).getName());
 		
-			code.println("store i32 %r"+(ssaReg-1)+", i32* %retval"+(currentRetVal-1));
-			//code.println("return_"+currentRetVal+":");
-			code.println("%retval"+ currentRetVal++ +" = load i32* %retval"+(currentRetVal-2));
-			code.println("ret i32 %retval"+(currentRetVal-1));
+			code.println("store i32 %r"+(ssaReg-1)+", i32* %retval"+(currentRetVal++ - returnCount));
+			code.println("br label %return_"+retLabel);
+			//code.println("%retval"+ currentRetVal++ +" = load i32* %retval"+(currentRetVal-1-returnCount));
+			//code.println("ret i32 %retval"+(currentRetVal-1));
 		}
 		else if(ex instanceof IntegerLiteral)
 		{
 			code.println("%r" + ssaReg++ +" = add i32 0, "+ex.toString());
-			code.println("store i32 %r"+(ssaReg-1)+", i32* %retval"+(currentRetVal-1));
-			//code.println("return_"+currentRetVal+":");
-			code.println("%retval"+ currentRetVal++ +" = load i32* %retval"+(currentRetVal-2));
-			code.println("ret i32 %retval"+(currentRetVal-1));
+			code.println("store i32 %r"+(ssaReg-1)+", i32* %retval"+(currentRetVal++ - returnCount));
+			code.println("br label %return_"+retLabel);
+			//code.println("%retval"+ currentRetVal++ +" = load i32* %retval"+(currentRetVal-1-returnCount));
+			//code.println("ret i32 %retval"+(currentRetVal-1));
 		}
 		else if(ex instanceof FunctionCall)
 		{
 			debug.println("FunctionCall");
 			int resultReg = functionCall((FunctionCall)ex);
-			code.println("store i32 %r"+resultReg+", i32* %retval"+(currentRetVal-1));
-			//code.println("return_"+currentRetVal+":");
-			code.println("%retval"+ currentRetVal++ +" = load i32* %retval"+(currentRetVal-2));
-			code.println("ret i32 %retval"+(currentRetVal-1));
+			code.println("store i32 %r"+resultReg+", i32* %retval"+(currentRetVal++ - returnCount));
+			code.println("br label %return_"+retLabel);
+			//code.println("%retval"+ currentRetVal++ +" = load i32* %retval"+(currentRetVal-1-returnCount));
+			//code.println("ret i32 %retval"+(currentRetVal-1));
 		}
 		
-		
-		
-		/*
-		code.println("%r" + ssaReg++ +" = "+ex.toString());
-		code.println("store i32 %"+(ssaReg-1)+", i32* %retval"+(currentRetVal-1));
-		//code.println("return_"+currentRetVal+":");
-		code.println("%retval"+ currentRetVal++ +" = load i32* %retval"+(currentRetVal-2));
-		code.println("ret i32 %retval"+(currentRetVal-1));
-		*/
 		return false;
 	}
 
@@ -1281,7 +1287,14 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 		else if(RHS instanceof FunctionCall)
 		{
 			returnReg = functionCall((FunctionCall) RHS);
-			code.println("store i32 %r"+returnReg+", i32* %"+nameLHS);
+			try{
+				Integer.parseInt(nameLHS);
+				code.println("store i32 %r"+returnReg+", i32* %r"+nameLHS);
+			}
+			catch (Exception e)
+			{
+				code.println("store i32 %r"+returnReg+", i32* %"+nameLHS);
+			}
 		}
 		else if(RHS instanceof UnaryExpression){
 			boolean global = true;
