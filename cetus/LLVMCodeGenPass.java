@@ -1054,9 +1054,9 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 				 String nameOfArray = nameLHS;
 				nameLHS = Integer.toString(ssaReg);
 				if(LHSArrayLocation.equals(LHSArrayLocation1))
-					code.println("%r"+ssaReg++ +" = getelementptr inbounds "+ListOfArrays.get(nameOfArray)+"* %"+nameOfArray+", i32 "+LHSArrayLocation1);
+					code.println("%r"+ssaReg++ +" = getelementptr inbounds "+ListOfArrays.get(nameOfArray)+"* %"+nameOfArray+" i32 0, i32 "+LHSArrayLocation1);
 				else
-					code.println("%r"+ssaReg++ +" = getelementptr inbounds "+ListOfArrays.get(nameOfArray)+"* %"+nameOfArray+", i32 "+LHSArrayLocation1);
+					code.println("%r"+ssaReg++ +" = getelementptr inbounds "+ListOfArrays.get(nameOfArray)+"* %"+nameOfArray+" i32 0, i32 "+LHSArrayLocation1);
 			}
 			else if (LHSIs2dArray){			// otherwise if left hand side is 2d array
 				String nameOfArray = nameLHS;
@@ -1602,8 +1602,12 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 			returnReg = ssaReg;
 			code.print("%r" + ssaReg++ + " = ");
 		}
-		code.print("call "+returnType.substring(returnType.indexOf('[')+1, returnType.indexOf(']'))+
-						" @"+fc.getName()+"(");
+		code.print("call ");
+
+		if(returnType.substring(returnType.indexOf('[')+1, returnType.indexOf(']')).equals("int"))
+			code.print("i32 @"+fc.getName()+"(");
+		else
+			code.print("void @"+fc.getName()+"(");
 		
 		//add args
 		for(int i=beginReg; i<=endReg;i++)
