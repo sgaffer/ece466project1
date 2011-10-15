@@ -1054,9 +1054,9 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 				 String nameOfArray = nameLHS;
 				nameLHS = Integer.toString(ssaReg);
 				if(LHSArrayLocation.equals(LHSArrayLocation1))
-					code.println("%r"+ssaReg++ +" = getelementptr inbounds "+ListOfArrays.get(nameOfArray)+"* %"+nameOfArray+" i32 0, i32 "+LHSArrayLocation1);
+					code.println("%r"+ssaReg++ +" = getelementptr inbounds "+ListOfArrays.get(nameOfArray)+"* %"+nameOfArray+", i32 0, i32 "+LHSArrayLocation1);
 				else
-					code.println("%r"+ssaReg++ +" = getelementptr inbounds "+ListOfArrays.get(nameOfArray)+"* %"+nameOfArray+" i32 0, i32 "+LHSArrayLocation1);
+					code.println("%r"+ssaReg++ +" = getelementptr inbounds "+ListOfArrays.get(nameOfArray)+"* %"+nameOfArray+", i32 0, i32 "+LHSArrayLocation1);
 			}
 			else if (LHSIs2dArray){			// otherwise if left hand side is 2d array
 				String nameOfArray = nameLHS;
