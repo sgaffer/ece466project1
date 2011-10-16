@@ -1071,6 +1071,31 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 			}
 			
 		}
+		else if (LHS instanceof UnaryExpression)
+		{
+			nameLHS = LHS.toString();
+			String unaryLHS = nameLHS.substring(nameLHS.lastIndexOf("*") + 2, nameLHS.indexOf(")"));
+			
+			int derefCount = Integer.parseInt(ListOfPointers.get(unaryLHS).toString());
+			
+			
+			for (int i = derefCount; i > 0; i--)
+			{
+				
+				code.print("%r" + ssaReg++ +" = load i32");
+				
+				for (int j = 0; j < i; j++)
+					code.print("*");
+				
+				code.print(" %");
+					
+				if (i == derefCount)
+					code.println(unaryLHS);
+				else
+					code.println("r" + (ssaReg - 2));
+			}
+			
+		}
 		else {
 			nameLHS = LHS.toString();
 		}
@@ -1118,7 +1143,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 					code.print(" %");
 
 					if (i == derefCount)
-						code.println(nameLHS.substring(nameLHS.lastIndexOf("*") + 2,nameLHS.lastIndexOf("*") + 3));
+						code.println(nameLHS = nameLHS.substring(nameLHS.lastIndexOf("*") + 2, nameLHS.indexOf(")")));
 					else
 						code.println("r"+(ssaReg - 2));
 				}
@@ -1243,7 +1268,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 					code.print(" %");
 
 					if (i == derefCount)
-						code.println(nameLHS.substring(nameLHS.lastIndexOf("*") + 2,nameLHS.lastIndexOf("*") + 3));
+						code.println(nameLHS = nameLHS.substring(nameLHS.lastIndexOf("*") + 2, nameLHS.indexOf(")")));
 					else
 						code.println("r"+(ssaReg - 2));
 				}
@@ -1443,7 +1468,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 		StringBuffer instrBuff = new StringBuffer("");	//buffer for output to be written upon completion
 		StringBuffer setupInstr = new StringBuffer(""); //buffer for extra load instructions
 		
-		if (! (ListOfPointers.containsKey(LHS.toString())))
+		if (! (ListOfPointers.containsKey(LHS.toString())))	// not a pointer
 		{
 			instrBuff = instrBuff.append("%r" + resultReg + " = ");	//print start of instruction
 			//decide on function to be used
@@ -1456,7 +1481,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 			else if(exp.getOperator().toString().trim().equals("/"))
 				instrBuff = instrBuff.append("sdiv i32 ");
 		}
-		else
+		else	// is a pointer
 		{
 			instrBuff = instrBuff.append("%r" + resultReg + " = getelementptr inbounds i32* ");
 		}
