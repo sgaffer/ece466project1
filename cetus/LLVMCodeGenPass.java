@@ -1739,7 +1739,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 			arg = arg.substring(arg.indexOf('&')+1, arg.indexOf('&')+2);
 			
 			if(ListOfArrays.containsKey(arg)){
-				code.println("%r" + ssaReg++ +"= getelementptr inbounds "+ListOfArrays.get(arg)+"* %"+arg+", i32 0, i32 "+arrayLoc.substring(arrayLoc.indexOf("[")+1,arrayLoc.indexOf("]")-1));
+				code.println("%r" + ssaReg++ +"= getelementptr inbounds "+ListOfArrays.get(arg)+"* %"+arg+", i32 0, i32 "+arrayLoc.substring(arrayLoc.indexOf("[")+1,arrayLoc.indexOf("]")));
 				arg = Integer.toString(ssaReg-1);
 				arg = new String("r"+arg);
 			}
