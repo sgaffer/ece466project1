@@ -1071,29 +1071,6 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 			}
 			
 		}
-		/*else if (LHS instanceof UnaryExpression)
-		{
-			nameLHS = LHS.toString();
-			String unaryLHS = nameLHS.substring(nameLHS.lastIndexOf("*") + 2, nameLHS.indexOf(")"));
-			
-			int derefCount = Integer.parseInt(ListOfPointers.get(unaryLHS).toString());
-			
-			for (int i = derefCount; i > 0; i--)
-			{
-				
-				code.print("%r" + ssaReg++ +" = load i32");
-				
-				for (int j = 0; j < i; j++)
-					code.print("*");
-				
-				code.print(" %");
-					
-				if (i == derefCount)
-					code.println(unaryLHS);
-				else
-					code.println("r" + (ssaReg - 2));
-			}			
-		}*/
 		else {
 			nameLHS = LHS.toString();
 		}
@@ -1198,7 +1175,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 				
 				code.println("%r" + ssaReg++ + " = load i32* %"+((Identifier)RHS).getName());
 				
-				code.println("store i32 %r"+ (ssaReg-1) + ", i32* %"+((Identifier)RHS).getName());
+				code.println("store i32 %r"+ (ssaReg-1) + ", i32* %"+nameLHS);
 			}
 			returnReg = ssaReg - 1;
 		}
