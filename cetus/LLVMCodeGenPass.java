@@ -1071,13 +1071,12 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 			}
 			
 		}
-		else if (LHS instanceof UnaryExpression)
+		/*else if (LHS instanceof UnaryExpression)
 		{
 			nameLHS = LHS.toString();
 			String unaryLHS = nameLHS.substring(nameLHS.lastIndexOf("*") + 2, nameLHS.indexOf(")"));
 			
 			int derefCount = Integer.parseInt(ListOfPointers.get(unaryLHS).toString());
-			
 			
 			for (int i = derefCount; i > 0; i--)
 			{
@@ -1093,9 +1092,8 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 					code.println(unaryLHS);
 				else
 					code.println("r" + (ssaReg - 2));
-			}
-			
-		}
+			}			
+		}*/
 		else {
 			nameLHS = LHS.toString();
 		}
@@ -1467,6 +1465,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 
 		StringBuffer instrBuff = new StringBuffer("");	//buffer for output to be written upon completion
 		StringBuffer setupInstr = new StringBuffer(""); //buffer for extra load instructions
+		StringBuffer unaryBuff = new StringBuffer("");	//buffer for unary expressions
 		
 		if (! (ListOfPointers.containsKey(LHS.toString())))	// not a pointer
 		{
@@ -1486,7 +1485,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 			instrBuff = instrBuff.append("%r" + resultReg + " = getelementptr inbounds i32* ");
 		}
 
-		//generate code and result registers for left hand size
+		//generate code and result registers for left hand side
 		if(LHS instanceof IntegerLiteral)
 			instrBuff = instrBuff.append(((IntegerLiteral)LHS).getValue());
 		else if(LHS instanceof BinaryExpression)
@@ -1520,6 +1519,29 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 		}
 		else if(LHS instanceof ArrayAccess)
 			dump.println("fell here0");
+		else if(LHS instanceof UnaryExpression)
+		{
+			String nameLHS = LHS.toString();
+			String unaryLHS = nameLHS.substring(nameLHS.lastIndexOf("*") + 2, nameLHS.indexOf(")"));
+			
+			int derefCount = Integer.parseInt(ListOfPointers.get(unaryLHS).toString());
+			
+			for (int i = derefCount; i > 0; i--)
+			{
+				unaryBuff = unaryBuff.append("%r" + ssaReg++ +" = load i32");
+				
+				for (int j = 0; j < i; j++)
+					unaryBuff = unaryBuff.append("*");
+				
+				unaryBuff = unaryBuff.append(" %");
+					
+				if (i == derefCount)
+					unaryBuff = unaryBuff.append(unaryLHS + "\n");
+				else
+					unaryBuff = unaryBuff.append("r" + (ssaReg - 2));
+			}
+			instrBuff.append("%r" + (ssaReg - 1));
+		}
 		else{
 			dump.println("fell here");
 			instrBuff = instrBuff.append("%r" + (ssaReg-2));
@@ -1554,6 +1576,10 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 		if(!setupInstr.toString().equals(""))		//print load instructions if required
 			code.print(setupInstr);
 
+		
+		if (LHS instanceof UnaryExpression)
+			code.println(unaryBuff);
+		
 		code.println(instrBuff);
 
 		return resultReg;
