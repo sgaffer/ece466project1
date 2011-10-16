@@ -1609,8 +1609,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 			}
 			else if(o instanceof UnaryExpression)
 			{
-				//System.out.println("o = " + o.toString());	
-				returnReg = o.toString().substring(o.toString().indexOf("&") + 2, o.toString().indexOf("&") + 3);
+				returnReg = o.toString().substring(o.toString().indexOf("&") + 2, o.toString().indexOf(")"));
 			}
 		}
 		return returnReg;
@@ -1700,7 +1699,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 		for(int i=1;i<fc.getNumArguments();i++)
 		{
 			String arg = fc.getArgument(i).toString();
-			arg = arg.substring(arg.indexOf('&')+2, arg.indexOf('&')+3);
+			arg = arg.substring(arg.indexOf('&')+2, arg.length() - 1);
 			code.print(", i32* %" + arg);
 		}
 		
@@ -1736,7 +1735,7 @@ public class LLVMCodeGenPass extends cetus.analysis.AnalysisPass
 			String arg = fc.getArgument(i).toString();
 			String arrayLoc=arg;
 			dump.println("arg="+arg);
-			arg = arg.substring(arg.indexOf('&')+1, arg.indexOf('&')+2);
+			//arg = arg.substring(arg.indexOf('&')+1, arg.indexOf('&')+2);
 			
 			if(ListOfArrays.containsKey(arg)){
 				code.println("%r" + ssaReg++ +"= getelementptr inbounds "+ListOfArrays.get(arg)+"* %"+arg+", i32 0, i32 "+arrayLoc.substring(arrayLoc.indexOf("[")+1,arrayLoc.indexOf("]")));
